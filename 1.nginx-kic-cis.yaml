@@ -218,7 +218,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: nginx-ingress-80
+  name: hackazon-kic-80
   namespace: hackazon
   labels:
     app: nginx-ingress
@@ -240,7 +240,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: nginx-ingress-443
+  name: hackazon-kic-443
   namespace: hackazon
   labels:
     app: nginx-ingress
@@ -279,7 +279,7 @@ data:
             "remark": "A1 Template",
             "hackazon": {
                 "class": "Tenant",
-                "nginx-ingress-80": {
+                "hackazon-kic-80": {
                     "class": "Application",
                     "template": "generic",
                     "hackazon-kic-80-vs": {
@@ -303,7 +303,7 @@ data:
                         ]
                     }
                 },
-                "nginx-ingress-443": {
+                "hackazon-kic-443": {
                     "class": "Application",
                     "template": "generic",
                     "hackazon-kic-443-vs": {
