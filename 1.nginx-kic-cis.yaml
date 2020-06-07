@@ -223,8 +223,8 @@ metadata:
   labels:
     app: nginx-ingress
     cis.f5.com/as3-tenant: hackazon
-    cis.f5.com/as3-app: nginx-ingress-80
-    cis.f5.com/as3-pool: nginx-ingress-pool-80
+    cis.f5.com/as3-app: hackazon-kic-80
+    cis.f5.com/as3-pool: hackazon-kic-pool-80
 spec:
   type: ClusterIP
   ports:
@@ -245,8 +245,8 @@ metadata:
   labels:
     app: nginx-ingress
     cis.f5.com/as3-tenant: hackazon
-    cis.f5.com/as3-app: nginx-ingress-443
-    cis.f5.com/as3-pool: nginx-ingress-pool-443
+    cis.f5.com/as3-app: hackazon-kic-443
+    cis.f5.com/as3-pool: hackazon-kic-pool-443
 spec:
   type: ClusterIP
   ports:
@@ -282,15 +282,15 @@ data:
                 "nginx-ingress-80": {
                     "class": "Application",
                     "template": "generic",
-                    "nginx-ingress-80-vs": {
+                    "hackazon-kic-80-vs": {
                         "class": "Service_HTTP",
-                        "remark": "nginx-ingress-80",
+                        "remark": "hackazon-kic-80",
                         "virtualAddresses": [
                             "10.1.10.101"
                         ],
-                        "pool": "nginx-ingress-pool-80"
+                        "pool": "hackazon-kic-pool-80"
                     },
-                    "nginx-ingress-pool-80": {
+                    "hackazon-kic-pool-80": {
                         "class": "Pool",
                         "monitors": [
                             "http"
@@ -306,16 +306,16 @@ data:
                 "nginx-ingress-443": {
                     "class": "Application",
                     "template": "generic",
-                    "nginx-ingress-443-vs": {
+                    "hackazon-kic-443-vs": {
                         "class": "Service_HTTP",
-                        "remark": "nginx-ingress-443",
+                        "remark": "hackazon-kic-443",
                         "virtualAddresses": [
                             "10.1.10.101"
                         ],
                         "virtualPort": 443,
-                        "pool": "nginx-ingress-pool-443"
+                        "pool": "hackazon-kic-pool-443"
                     },
-                    "nginx-ingress-pool-443": {
+                    "hackazon-kic-pool-443": {
                         "class": "Pool",
                         "monitors": [
                             "https"
