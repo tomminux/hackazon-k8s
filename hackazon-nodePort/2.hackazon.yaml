@@ -1,164 +1,109 @@
 ## ----------------------------------------------------------------------------
-## ..:: Persistent Volume Configuration ::..
-##-----------------------------------------------------------------------------
-apiVersion: v1
-kind: Service
-metadata:
-  name: glusterfs-cluster
-  namespace: hackazon
-spec:
-  ports:
-  - port: 1
----
-apiVersion: v1
-kind: Endpoints
-metadata:
-  name: glusterfs-cluster
-  namespace: hackazon
-subsets:
-  - addresses:
-      - ip: 10.1.20.20
-    ports:
-      - port: 1
----
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: pv-gsfs-k8s
-  namespace: hackazon
-spec:
-  capacity:
-    storage: 5Gi
-  volumeMode: Filesystem
-  accessModes:
-    - ReadWriteMany
-  persistentVolumeReclaimPolicy: Recycle
-  storageClassName: gsfs
-  glusterfs:
-    endpoints: glusterfs-cluster
-    path: k8s-udf-storage
-    readOnly: false
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: pvc-gsfs-k8s
-  namespace: hackazon
-  labels:
-    app: pvc-gsfs-k8s
-spec:
-  accessModes:
-    - ReadWriteMany
-  resources:
-    requests:
-      storage: 5Gi
-  storageClassName: gsfs
----
-## ----------------------------------------------------------------------------
-## ..:: Mysql POD / Service Configuration ::..
-##-----------------------------------------------------------------------------
-apiVersion: v1
-kind: Service
-metadata:
-  name: mysql
-  namespace: hackazon
-spec:
-  ports:
-  - port: 3306
-  selector:
-    app: mysql
----
-apiVersion: apps/v1 # for versions before 1.9.0 use apps/v1beta2
-kind: Deployment
-metadata:
-  name: mysql
-  namespace: hackazon
-spec:
-  selector:
-    matchLabels:
-      app: mysql
-  strategy:
-    type: Recreate
-  template:
-    metadata:
-      labels:
-        app: mysql
-    spec:
-      containers:
-      - image: mysql:5.6
-        name: mysql
-        env:
-          # Use secret in real usage
-        - name: MYSQL_ROOT_PASSWORD
-          value: Default1234!
-        ports:
-        - containerPort: 3306
-          name: mysql
-        volumeMounts:
-        - name: mysql-persistent-storage
-          mountPath: /var/lib/mysql
-          subPath: mysql
-      volumes:
-      - name: mysql-persistent-storage
-        persistentVolumeClaim:
-          claimName: pvc-gsfs-k8s
----
-## ----------------------------------------------------------------------------
 ## ..:: Hackazon POD / Service Configuration ::..
 ##-----------------------------------------------------------------------------
 apiVersion: v1
 kind: Service
 metadata:
-  name: hackazon
+  name: hackazon-nap
   namespace: hackazon
   labels:
-    app: hackazon
+    app: hackazon-nap
 spec:
-  type: NodePort
+  type: ClusterIP
   ports:
-  - name: hackazon-80
+  - name: hackazon-nap
     port: 80
-    protocol: TCP
     targetPort: 80
-    nodePort: 31234
+    protocol: TCP
   selector:
-      app: hackazon
+      app: hackazon-nap
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: hackazon
+  name: hackazon-nap
   namespace: hackazon
   labels:
-    app: hackazon
+    app: hackazon-nap
     version: v1
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: hackazon
+      app: hackazon-nap
       version: v1
   template:
     metadata:
       labels:
-        app: hackazon
+        app: hackazon-nap
         version: v1
     spec:
       containers:
-      - env:
-        - name: service_name
-          value: hackazon
-        image:  mutzel/all-in-one-hackazon
+      - image:  mutzel/all-in-one-hackazon
         imagePullPolicy: IfNotPresent
-        name: hackazon
+        name: hackazon-nap
         ports:
         - containerPort: 80
           protocol: TCP
         volumeMounts:
         - name: hackazon-persistent-storage
           mountPath: /var/www/hackazon
-          subPath: hackazon
+          subPath: hackazon-nap
+      - image: registry.f5-udf.com:5000/nginx-nap:latest
+        imagePullPolicy: Always
+        name: hackazon-nginx-app-protect
+        ports:
+        - name: http
+          containerPort: 8080
+        - name: https
+          containerPort: 443
+        volumeMounts:
+        - mountPath: /etc/nginx/waf # mount nginx-conf volumn to /etc/nginx
+          readOnly: true
+          name: nginx-waf
+        - mountPath: /etc/nginx # mount nginx-conf volumn to /etc/nginx
+          readOnly: true
+          name: nginx-config
+        securityContext:
+          allowPrivilegeEscalation: true
+          capabilities:
+            drop:
+            - ALL
+            add:
+            - CAP_NET_BIND_SERVICE
+          procMount: Default
+          runAsUser: 0
+          runAsGroup: 0
+          privileged: true
       volumes:
       - name: hackazon-persistent-storage
         persistentVolumeClaim:
           claimName: pvc-gsfs-k8s
+      - name: nginx-config
+        configMap:
+          name: nginx-config
+      - name: nginx-waf
+        configMap:
+          name: nginx-waf
+      imagePullSecrets:
+        - name: regcred
+          
+---
+## ----------------------------------------------------------------------------
+## ..:: NGINX KIC VS Configuration for Hackazon ::..
+##-----------------------------------------------------------------------------
+apiVersion: k8s.nginx.org/v1
+kind: VirtualServer
+metadata:
+  name: hackazon-nap-vs
+  namespace: hackazon
+spec:
+  host: hackazon-nap.f5-udf.com
+  upstreams:
+  - name: hackazon-nap
+    service: hackazon-nap
+    port: 8080
+  routes:
+  - path: /
+    action:
+      pass: hackazon-nap
