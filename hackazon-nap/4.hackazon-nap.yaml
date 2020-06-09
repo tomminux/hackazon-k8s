@@ -44,24 +44,24 @@ spec:
         imagePullPolicy: IfNotPresent
         name: hackazon-nap
         ports:
-        - containerPort: 3000
+        - containerPort: 80
           protocol: TCP
         volumeMounts:
         - name: hackazon-persistent-storage
           mountPath: /var/www/hackazon
-          subPath: hackazon-nap
+          subPath: hackazon/hackazon-nap
       - image: registry.f5-udf.com:5000/nginx-nap:latest
         imagePullPolicy: Always
         name: hackazon-nginx-app-protect
         ports:
         - name: http
-          containerPort: 80
+          containerPort: 8080
         - name: https
           containerPort: 443
         volumeMounts:
-#        - mountPath: /etc/nginx/waf
-#          readOnly: true
-#          name: nginx-waf
+        - mountPath: /etc/nginx/waf
+          readOnly: true
+          name: nginx-waf
         - mountPath: /etc/nginx/conf.d
           readOnly: true
           name: nginx-config
@@ -83,9 +83,9 @@ spec:
       - name: nginx-config
         configMap:
           name: nginx-config
-#      - name: nginx-waf
-#        configMap:
-#          name: nginx-waf
+      - name: nginx-waf
+        configMap:
+          name: nginx-waf
       imagePullSecrets:
         - name: regcred
           
@@ -103,7 +103,7 @@ spec:
   upstreams:
   - name: hackazon-nap
     service: hackazon-nap
-    port: 80
+    port: 8080
   routes:
   - path: /
     action:
